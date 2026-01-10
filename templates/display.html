@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <title>Barrier Control System</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+
+<div class="terminal">
+    <div class="label">ParQ ANPR SYSTEM</div>
+    <div id="plate" class="hidden plate-box">----</div>
+    
+    <div id="status" class="status-bar status-waiting">System Ready</div>
+    
+    <div class="gate-indicator">
+        Gate Status: <span id="gate-text">Closed</span>
+    </div>
+</div>
+
+<script>
+let lastSeen = 0;
+
+async function fetchPlate() {
+    try {
+        const res = await fetch("/plate");
+        const data = await res.json();
+
+        const plateEl = document.getElementById("plate");
+        const statusEl = document.getElementById("status");
+        const gateText = document.getElementById("gate-text");
+
+        // Проверка дали сървърът праща реален номер
+        if (data.text && data.text !== "----") {
+            lastSeen = Date.now();
+            plateEl.innerText = data.text;
+            plateEl.classList.add("visible");
+
+            if (data.valid) {
+                statusEl.innerText = "Access Granted";
+                statusEl.className = "status-bar status-granted";
+                gateText.innerText = "Opening...";
+                gateText.style.color = "#2ecc71";
+            } else {
+                statusEl.innerText = "Access Denied";
+                statusEl.className = "status-bar status-denied";
+                gateText.innerText = "Closed";
+                gateText.style.color = "#e74c3c";
+            }
+        }
+
+        // Логика за изчистване след 5 секунди
+        if (Date.now() - lastSeen > 2000) {
+            plateEl.innerText = "----";
+            statusEl.innerText = "System Ready";
+            statusEl.className = "status-bar status-waiting";
+            gateText.innerText = "Closed";
+            gateText.style.color = "#666";
+        }
+
+    } catch (e) {
+        console.error("Connection error");
+    }
+}
+
+setInterval(fetchPlate, 500);
+</script>
+
+</body>
+</html>

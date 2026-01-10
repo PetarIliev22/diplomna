@@ -4,6 +4,7 @@ from collections import defaultdict
 from queue import Queue
 import easyocr
 from supabase import create_client
+from server import update_plate
 from ultralytics import YOLO
 
 CAMERA_SOURCE = 0
@@ -24,7 +25,6 @@ BG_PLATE_REGEX = re.compile(r'^[A-Z]{1,2}[0-9]{4}[A-Z]{2}$')
 # Създаване на директории, ако не съществуват
 os.makedirs(IMAGES_DIR, exist_ok=True)
 os.makedirs(LABELS_DIR, exist_ok=True)
-
 
 frame_queue = Queue(maxsize=QUEUE_MAX)
 seen_counts = defaultdict(int)
@@ -109,6 +109,7 @@ while True:
                 confirmed.add(text)
                 print("Confirmed Plate:", text)
                 save_plate_db(text)
+                update_plate(text, True)
 
     # Показване на текущия кадър с рамки и текст
     cv2.imshow("Parking System", frame)
