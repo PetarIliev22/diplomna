@@ -1,0 +1,6 @@
+path: dataset_auto
+train: images
+val: images
+
+names:
+  0: plate
