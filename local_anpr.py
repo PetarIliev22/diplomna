@@ -75,7 +75,7 @@ def save_plate_db(text):
         print("Supabase error:", e)
 
 Thread(target=capture_frames, daemon=True).start()
-print("Parking System Started. Press 'q' to quit.")
+print("Parking System Started. Press 'q' to QUIT.")
 
 frame_index = 0
 while True:
