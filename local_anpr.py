@@ -4,8 +4,11 @@ from collections import defaultdict
 from queue import Queue
 import easyocr
 from supabase import create_client
-from server import update_plate
+from server import update_plate, run_flask
+from threading import Thread
 from ultralytics import YOLO
+
+Thread(target=run_flask, daemon=True).start()
 
 CAMERA_SOURCE = 0
 SUPABASE_URL = "https://sxkwiwzeemnqvjgctvva.supabase.co"
