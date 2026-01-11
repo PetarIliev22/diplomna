@@ -2,64 +2,81 @@
 <html lang="bg">
 <head>
     <meta charset="UTF-8">
-    <title>Barrier Control System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParQly ANPR Smart Display</title>
     <link rel="stylesheet" href="../static/style.css">
 </head>
 <body>
+<div class="smart-totem" id="totem-frame">
+    <div class="digital-screen">
+        <div id="home-layer">
+            <div class="home-content">
+                <div class="clock" id="live-clock">00:00</div>
+                <div style="letter-spacing: 2px; font-size: 0.8rem; margin-top: 10px;">PARQLY SMART SYSTEM</div>
+            </div>
+        </div>
 
-<div class="terminal">
-    <div class="label">ParQ ANPR SYSTEM</div>
-    <div id="plate" class="hidden plate-box">----</div>
-    
-    <div id="status" class="status-bar status-waiting">System Ready</div>
-    
-    <div class="gate-indicator">
-        Gate Status: <span id="gate-text">Closed</span>
+        <div class="screen-glow"></div>
+        <div class="header">
+            <div class="camera-icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="label-small">Detected Plate</div>
+            <div id="plate">----</div>
+        </div>
+
+        <div class="footer-status">
+            <div id="status-box">
+                <div id="status-text"></div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
 let lastSeen = 0;
+let isActive = false;
+const plateEl = document.getElementById("plate");
+const statusText = document.getElementById("status-text");
+const totemFrame = document.getElementById("totem-frame");
+const clockEl = document.getElementById("live-clock");
+
+function updateClock() {
+    const now = new Date();
+    clockEl.innerText = now.getHours().toString().padStart(2, '0') + ":" + 
+                       now.getMinutes().toString().padStart(2, '0');
+}
+setInterval(updateClock, 1000);
+updateClock();
 
 async function fetchPlate() {
     try {
         const res = await fetch("/plate");
         const data = await res.json();
 
-        const plateEl = document.getElementById("plate");
-        const statusEl = document.getElementById("status");
-        const gateText = document.getElementById("gate-text");
-
-        // Проверка дали сървърът праща реален номер
-        if (data.text && data.text !== "----") {
+        if (data.text && data.text !== "" && data.text !== "----") {
             lastSeen = Date.now();
+            isActive = true;
             plateEl.innerText = data.text;
-            plateEl.classList.add("visible");
 
             if (data.valid) {
-                statusEl.innerText = "Access Granted";
-                statusEl.className = "status-bar status-granted";
-                gateText.innerText = "Opening...";
-                gateText.style.color = "#2ecc71";
-            } else {
-                statusEl.innerText = "Access Denied";
-                statusEl.className = "status-bar status-denied";
-                gateText.innerText = "Closed";
-                gateText.style.color = "#e74c3c";
-            }
+                totemFrame.className = "smart-totem state-granted";
+                statusText.innerText = "ACCESS GRANTED";
+            } 
         }
 
-        // Логика за изчистване след 5 секунди
-        if (Date.now() - lastSeen > 2000) {
+        else if (isActive && (Date.now() - lastSeen > 3000)) {
+            totemFrame.className = "smart-totem"; 
+            statusText.innerText = "";
             plateEl.innerText = "----";
-            statusEl.innerText = "System Ready";
-            statusEl.className = "status-bar status-waiting";
-            gateText.innerText = "Closed";
-            gateText.style.color = "#666";
+            isActive = false;
         }
 
-    } catch (e) {
-        console.error("Connection error");
+    } catch (error) {
+        console.error("Error fetching plate data:", error);
     }
 }
 
