@@ -14,7 +14,7 @@
             <div id="home-layer">
                 <div class="home-content">
                     <div class="clock" id="live-clock">00:00</div>
-                    <div style="letter-spacing: 2px; font-size: 1.8rem; margin-top: 10px;">WELCOME!</div>
+                    <div style="letter-spacing: 2px; font-size: 1.8rem; margin-top: 10px;">Greetings,<br>WELCOME!</div>
                 </div>
             </div>
 
@@ -25,9 +25,9 @@
                 </div>
             </div>
 
-            <div class="main-content">
-                <div class="label-small">Detected Plate</div>
-                <div id="plate">----</div>
+            <div class="plate-container">
+                <img src="../static/plate_background.png" alt="License Plate" style="width:380px;">
+                <div id="plate"></div>
             </div>
 
             <div class="footer-status">
@@ -42,50 +42,40 @@
 </div>
 
 <script>
-    let lastSeen = 0;
-    let isActive = false;
-    const plateEl = document.getElementById("plate");
-    const statusText = document.getElementById("status-text");
-    const totemFrame = document.getElementById("totem-frame");
-    const clockEl = document.getElementById("live-clock");
+const plateEl = document.getElementById("plate");
+const statusText = document.getElementById("status-text");
+const totemFrame = document.getElementById("totem-frame");
+const clockEl = document.getElementById("live-clock");
 
-    function updateClock() {
-        const now = new Date();
-        clockEl.innerText = now.getHours().toString().padStart(2, '0') + ":" + 
-                           now.getMinutes().toString().padStart(2, '0');
+function updateClock() {
+    const now = new Date();
+    clockEl.textContent =
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+updateClock();
+setInterval(updateClock, 60000);
+
+const evtSource = new EventSource("/plate/stream");
+
+evtSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log("Received SSE:", event.data);
+ 
+    if (data.text && data.text !== "") {
+        plateEl.innerText = data.text;
+
+        if (data.valid) {
+            totemFrame.className = "smart-totem state-granted";
+            statusText.innerText = "ACCESS GRANTED";
+            const audio = new Audio('../static/beep.mp3'); 
+            audio.play();
+        } 
     }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    async function fetchPlate() {
-        try {
-            const res = await fetch("/plate");
-            const data = await res.json();
-
-            if (data.text && data.text !== "" && data.text !== "----") {
-                lastSeen = Date.now();
-                isActive = true;
-                plateEl.innerText = data.text;
-
-                if (data.valid) {
-                    totemFrame.className = "smart-totem state-granted";
-                    statusText.innerText = "ACCESS GRANTED";
-                } else {
-                    totemFrame.className = "smart-totem state-denied";
-                    statusText.innerText = "ACCESS DENIED";
-                }
-            } 
-            else if (isActive && (Date.now() - lastSeen > 3500)) {
-                totemFrame.className = "smart-totem"; 
-                statusText.innerText = "WAITING...";
-                plateEl.innerText = "----";
-                isActive = false;
-            }
-        } catch (error) {
-            console.error("Error fetching plate data:", error);
-        }
-    }
-    setInterval(fetchPlate, 500);
+    setTimeout(() => {
+        totemFrame.className = "smart-totem";
+        plateEl.innerText = "----";
+    }, 5000);
+};
 </script>
 </body>
 </html>
