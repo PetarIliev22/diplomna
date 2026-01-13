@@ -31,22 +31,34 @@ body {
     margin: 115px auto;
 }
 
-#plate{
+.screen-overlay {
     position: absolute;
-    top: 54%;
-    left: 54%;
-    transform: translate(-50%, -50%);
-    font-weight: 300;
-    color: black; 
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    display: none; 
+    justify-content: center;
+    align-items: center;
+    z-index: 999; 
 }
 
+#plate {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-45%, -15%);
+    font-family: monospace; 
+    font-size: 28px;
+    white-space: nowrap;
+}
 .smart-totem {
     position: relative;
     width: 400px;
     height: 650px;
     background: var(--metal-gradient);
     border-radius: 50px;
-    padding: 20px;
+    padding: 30px 25px 30px 25px;
     box-shadow: 
         0 0 0 4px #333333,
         0 40px 80px -15px rgba(0,0,0,0.9),
@@ -74,6 +86,7 @@ body {
     background: url('../static/led_screen_dark.png');
     background-size: cover;
     border-radius: 30px;
+    transition: opacity 1s ease-in-out, filter 1s ease-in-out;
 }
 
 #home-layer {
@@ -115,7 +128,7 @@ body {
 
 .main-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1; }
 .label-small { font-size: 1.2rem; color: #bbbbbb; text-transform: uppercase; margin-bottom: 5px; }
-#plate { font-size: 3.2rem; font-weight: 600; color: black; letter-spacing: 4px; }
+#plate { font-size: 3.5rem; font-weight: 500; color: black;}
 
 .footer-status { padding: 40px 20px; text-align: center; z-index: 1; }
 #status-box {

@@ -1,5 +1,4 @@
-import os, re, time, json, cv2
-from threading import Thread
+import re, time, cv2
 from collections import defaultdict
 from queue import Queue
 import easyocr
@@ -13,21 +12,23 @@ Thread(target=run_flask, daemon=True).start()
 CAMERA_SOURCE = 0
 SUPABASE_URL = "https://sxkwiwzeemnqvjgctvva.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4a3dpd3plZW1ucXZqZ2N0dnZhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzAzNDU4OSwiZXhwIjoyMDc4NjEwNTg5fQ.j7yG8Xgmg2o4iw0NoiGhYEdCutdfzolHxX-2pOOuf6s"
-TABLE_NAME = "plates"  
+TABLE_NAME = "plates" 
+COOLDOWN = 5  # Време за изчакване преди повторно записване на същия номер 
+PLATE_TIMEOUT = 1  # Време за изчакване преди нулиране на видимостта на номера
 CONFIRM_FRAMES = 2  # Брой последователни кадри за потвърждение на номера
-FRAME_SKIP = 4      # Пропускане на всеки N кадъра за оптимизация
-QUEUE_MAX = 5       # Максимален брой кадри в опашката
+FRAME_SKIP = 2      # Пропускане на всеки N кадъра за оптимизация
+QUEUE_MAX = 1       # Максимален брой кадри в опашката
 
-DATASET_DIR = "dataset_auto"
-IMAGES_DIR = os.path.join(DATASET_DIR, "images")
-LABELS_DIR = os.path.join(DATASET_DIR, "labels")
+# DATASET_DIR = "dataset_auto"
+# IMAGES_DIR = os.path.join(DATASET_DIR, "images")
+# LABELS_DIR = os.path.join(DATASET_DIR, "labels")
 
 # Регулярен израз за валиден български регистрационен номер
 BG_PLATE_REGEX = re.compile(r'^[A-Z]{1,2}[0-9]{4}[A-Z]{2}$')
 
-# Създаване на директории, ако не съществуват
-os.makedirs(IMAGES_DIR, exist_ok=True)
-os.makedirs(LABELS_DIR, exist_ok=True)
+# # Създаване на директории, ако не съществуват
+# os.makedirs(IMAGES_DIR, exist_ok=True)
+# os.makedirs(LABELS_DIR, exist_ok=True)
 
 frame_queue = Queue(maxsize=QUEUE_MAX)
 seen_counts = defaultdict(int)
@@ -80,25 +81,39 @@ def save_plate_db(text):
 Thread(target=capture_frames, daemon=True).start()
 print("Parking System Started. Press 'q' to QUIT.")
 
-frame_index = 0
+plate_visible = False
+lastDetection = 3
+last_plate_time = 0
+
 while True:
     if frame_queue.empty(): 
         time.sleep(0.01)
         continue
-
+    
     frame = frame_queue.get()
-    frame_index += 1
 
     # Пропускане на кадри за оптимизация
-    if frame_index % FRAME_SKIP != 0: continue
-
     results = model(frame, conf=0.4, verbose=False)
-    for box in results[0].boxes.xyxy:
+    boxes = results[0].boxes.xyxy
+    
+    # Ако няма открити номера
+    if len(boxes) == 0:
+        if plate_visible and (time.time() - last_plate_time) > PLATE_TIMEOUT:
+            plate_visible = False
+            seen_counts.clear()
+            confirmed.clear()
+        continue
+        
+    # Обработка на откритите номера     
+    for box in boxes:
         x1, y1, x2, y2 = map(int, box)
         plate_roi = frame[y1:y2, x1:x2]  
         text = ocr_plate(plate_roi)
         if not text: continue
 
+        plate_visible = True
+        last_plate_time = time.time()
+        
         # Проверка на валидност и оцветяване на рамката
         valid = is_valid_bg_plate(text)
         color = (0,255,0) if valid else (0,0,255)
@@ -106,16 +121,21 @@ while True:
         cv2.putText(frame, text, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
         # Потвърждаване на номер след няколко последователни кадъра
+        current_time = time.time()
         if valid:
             seen_counts[text] += 1
             if seen_counts[text] >= CONFIRM_FRAMES and text not in confirmed:
-                confirmed.add(text)
-                print("Confirmed Plate:", text)
-                save_plate_db(text)
-                update_plate(text, True)
+                if current_time - lastDetection > COOLDOWN:
+                    confirmed.add(text)
+                    lastDetection = current_time
+                    text_with_interval = text
+                    text_with_interval = f"{text[:-6]} {text[-6:-2]} {text[-2:]}"
+                    print("Confirmed Plate:", text_with_interval)
+                    save_plate_db(text)
+                    update_plate(text_with_interval, True)
 
     # Показване на текущия кадър с рамки и текст
-    cv2.imshow("Parking System", frame)
+    cv2.imshow("ParQly | ANPR Systems", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"): break
 
 cv2.destroyAllWindows()
