@@ -145,6 +145,13 @@ body {
 .state-granted .camera-icon { border-color: var(--success); color: var(--success); }
 .state-granted .live-view-screen { border-color: var(--success); }
 
+.state-error .screen-glow { background: radial-gradient(circle at 50% 20%, rgba(239, 68, 68, 0.25) 0%, transparent 70%); border: 2px solid rgba(185, 28, 28, 0.75); border-radius: 30px; }
+.state-error #status-box { background: rgb(239 68 68 / 45%); border-color: var(--error); }
+.state-error #status-text { color: white; }
+.state-error .camera-icon { border-color: var(--error); color: var(--error); }
+.state-error .live-view-screen { border-color: var(--error); }
+
+
 @keyframes blink { 50% { opacity: 0.2; } }
 @keyframes move-scan { 0% { top: 0; } 100% { top: 100%; } }
 

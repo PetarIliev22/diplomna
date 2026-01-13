@@ -67,7 +67,7 @@ evtSource.onmessage = function(event) {
         if (data.valid) {
             totemFrame.className = "smart-totem state-granted";
             statusText.innerText = "ACCESS GRANTED";
-            const audio = new Audio('../static/beep.mp3'); 
+            const audio = new Audio('../static/access.mp3'); 
             audio.play();
         } 
     }
