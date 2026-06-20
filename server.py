@@ -1,4 +1,5 @@
-import time, os, sys, json, webbrowser, ssl
+import  time, os, sys, json, webbrowser, ssl
+from datetime import datetime, timezone
 from flask import Flask, render_template, jsonify, Response, request
 from flask_cors import CORS
 from supabase import create_client
@@ -69,7 +70,7 @@ def receive_plate():
         return jsonify({"error": "No plate"}), 400
 
     formatted_plate = format_plate(plate)
-    now = time.strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(timezone.utc).isoformat()
 
     try:
 
@@ -85,22 +86,15 @@ def receive_plate():
 
             carPlate = res.data[0]
 
-            if carPlate['paid'] and not carPlate['can_exit']:
-                db.table(TABLE_NAME).update({
-                    "can_exit": True,
-                    "time_out": now
-                }).eq("plate_text", plate).execute()
-
-                carPlate['can_exit'] = True
-
-            if not carPlate['can_exit']:
-                print("NOT EXITABLE:", plate)
+            if not carPlate["paid"]:
+                print("NOT PAID:", plate)
                 update_plate(formatted_plate, False)
-                return jsonify({"error": "NOT EXITABLE"}), 400
+                return jsonify({"error": "NOT PAID"}), 400
 
             db.table(TABLE_NAME)\
                 .update({
-                    "status": "OUT"
+                    "status": "OUT",
+                    "time_out": now
                 })\
                 .eq("plate_text", plate)\
                 .eq("status", "IN")\
@@ -110,12 +104,11 @@ def receive_plate():
             update_plate(formatted_plate, True)
 
         else:
-
+            
             db.table(TABLE_NAME).insert({
                 "plate_text": plate,
                 "status": "IN",
                 "paid": False,
-                "can_exit": False,
                 "time_in": now
             }).execute()
 
