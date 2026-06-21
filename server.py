@@ -73,7 +73,6 @@ def receive_plate():
     now = datetime.now(timezone.utc).isoformat()
 
     try:
-
         db = get_supabase()
 
         res = db.table(TABLE_NAME)\
@@ -83,8 +82,29 @@ def receive_plate():
             .execute()
 
         if res.data:
-
             carPlate = res.data[0]
+
+            time_in = datetime.fromisoformat(
+                carPlate["time_in"].replace("Z", "+00:00")
+            )
+
+            time_diff = (
+                datetime.now(timezone.utc) - time_in
+            ).total_seconds()
+
+            if time_diff <= 600:
+                db.table(TABLE_NAME)\
+                    .update({
+                        "status": "OUT",
+                        "time_out": now
+                    })\
+                    .eq("plate_text", plate)\
+                    .eq("status", "IN")\
+                    .execute()
+
+                print("EXIT FREE:", plate)
+                update_plate(formatted_plate, True)
+                return jsonify({"status": "ok", "exit": "free"})
 
             if not carPlate["paid"]:
                 print("NOT PAID:", plate)
@@ -100,11 +120,11 @@ def receive_plate():
                 .eq("status", "IN")\
                 .execute()
 
-            print("EXIT:", plate)
+            print("EXIT PAID:", plate)
             update_plate(formatted_plate, True)
+            return jsonify({"status": "ok", "exit": "paid"})
 
         else:
-            
             db.table(TABLE_NAME).insert({
                 "plate_text": plate,
                 "status": "IN",
@@ -113,11 +133,10 @@ def receive_plate():
             }).execute()
 
             print("ENTER:", plate)
-
-        return jsonify({"status": "ok"})
+            return jsonify({"status": "ok", "action": "enter"})
 
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/plate/stream")
